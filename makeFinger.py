@@ -1,13 +1,6 @@
-
 import numpy as np
-import scipy
 import matcompat
-
-# if available import pylab (from matlibplot)
-try:
-    import matplotlib.pylab as plt
-except ImportError:
-    pass
+import matplotlib.pyplot as plt
 
 def makeFinger(v):
 
@@ -17,8 +10,8 @@ def makeFinger(v):
     #% Output: vector of fingerprints, f where f(i) = |{j: |{k:v(k)=j}|=i }|
     #%         i.e. f(i) is the number of elements that occur exactly i times 
     #%         in the vector v
-    h1 = plt.hist(v, np.arange(matcompat.max(v), (matcompat.max(v))+1))
-    f = plt.hist(h1, np.arange(0., (matcompat.max(h1))+1))
+    h1 = plt.hist(v, np.arange(max(v), (max(v))+1))
+    f = plt.hist(h1, np.arange(0., (max(h1))+1))
     f = f[1:]
     f = f.flatten(1)
     return [f]
