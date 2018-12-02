@@ -7,10 +7,10 @@ from unseen import unseen
 from makeFinger import makeFinger
 
 # % Generate a sample of size 10,000 from the uniform distribution of support 100,000
-n = 100000.
-k = 10000.
+n = 100000
+k = 30000
 # samp = randi(n, k, 1.)
-samp = [random.uniform(0, 100000) for _ in range(10000)]
+samp = [random.uniform(0, n) for _ in range(k)]
 # % Compute corresponding 'fingerprint'
 f = makeFinger(samp)
 # % Estimate histogram of distribution from which sample was drawn

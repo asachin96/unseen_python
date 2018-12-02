@@ -67,26 +67,27 @@ def unseen(f=None, *args, **kwargs):
     # unseen.m:39
     fLP = zeros(1, max(size(f)))
     # unseen.m:40
-    for i in np.arange(1, max(size(f))).reshape(-1):
-        if f[0][i] > 0:
-            wind = concat([max(1, i - ceil(sqrt(i))), __builtin__.min(i + ceil(sqrt(i)), max(size(f)))])
-            # unseen.m:43
-            sum = 0
-            for j in np.arange(wind[0], wind[1]):
-                sum = sum + f[0][int(j)]
-            if sum < sqrt(i):
-                x = concat([x, i / k])
-                # unseen.m:45
-                histx = concat([histx, f[0][i]])
-                # unseen.m:46
-                fLP[i] = 0
-            # unseen.m:47
-            else:
-                fLP[i] = f[0][i]
+    #check back later
+    # for i in np.arange(1, max(size(f))).reshape(-1):
+    #     if f[0][i] > 0:
+    #         wind = concat([max(1, i - ceil(sqrt(i))), __builtin__.min(i + ceil(sqrt(i)), size(f))])
+    #         # unseen.m:43
+    #         sum = 0
+    #         for j in np.arange(wind[0], wind[1]):
+    #             sum = sum + f[0][int(j)]
+    #         if sum < sqrt(i):
+    #             x = concat([x, i / k])
+    #             # unseen.m:45
+    #             histx = concat([histx, f[0][i]])
+    #             # unseen.m:46
+    #             fLP[i] = 0
+    #         # unseen.m:47
+    #         else:
+    #             fLP[i] = f[0][i]
 
 
 
-    fLP = f # BADA COMMENTs
+    fLP = f.copy() # BADA COMMENTs
     # unseen.m:49
 
     # If no LP portion, return the empirical histogram
@@ -101,8 +102,6 @@ def unseen(f=None, *args, **kwargs):
     # Set up the first LP
     LPmass = 1 - dot(x, np.transpose(histx))
     # unseen.m:63
-    print LPmass
-    print zeros(1,int(ceil(sqrt(fmax))))
     fLP = np.append(fLP,(zeros(1,int(ceil(sqrt(fmax)))))) #to change
     # fLP=concat(l)
     # unseen.m:65
@@ -114,61 +113,93 @@ def unseen(f=None, *args, **kwargs):
 
 
     xLP = dot(xLPmin, gridFactor ** (arange(0, ceil(log(xLPmax / xLPmin) / log(gridFactor)))))
+    # print ("xLP: " + str(xLP))
     # unseen.m:69
     szLPx = max(size(xLP))
+    print ("szLPx: " + str(szLPx))
+
     # unseen.m:70
     i = szLPx + dot(2, szLPf)
     i = np.array(i)
-    objf = zeros(i[0][0] , 1)
+    # objf = zeros(i[0][0] , 1)
+    print ("objf length: " + str(i[0][0]))
+
+    objf = [0 for _ in range(i[0][0])]
     # unseen.m:72
 
-    objf[arange(szLPx + 1, end(), 2)] = 1.0 / (sqrt(fLP + 1))
+    t = fLP.copy()
+    for j in range(len(fLP)):
+        t[j] = 1./sqrt(t[j]+1)
+    m=0
+    for j in range(szLPx, len(objf), 2):
+        objf[j] = t[m]
+        m+=1
     # unseen.m:73
-
-    objf[arange(szLPx + 2, end(), 2)] = 1.0 / (sqrt(fLP + 1))
+    m = 0
+    for j in range(szLPx + 1, len(objf), 2):
+        objf[j] = t[m]
+        m += 1
     # unseen.m:74
 
-    A = zeros(dot(2, szLPf), szLPx + dot(2, szLPf))
+    m = dot(2, szLPf)
+    n = szLPx + dot(2, szLPf)
+    n = np.array(n)
+    A = [[0.0 for i in range(n[0][0])] for j in range(m)]
+    # A = zeros(m, n[0][0])
+    print "A.shape: " + str(len(A))+ ", "+ str(len(A[0]))
     # unseen.m:76
-    b = zeros(dot(2, szLPf), 1)
-    # unseen.m:77
-    for i in arange(1, szLPf).reshape(-1):
-        A[dot(2, i) - 1, arange(1, szLPx)] = poisson.pmf(i, dot(k, xLP))
-        # unseen.m:79
-        A[dot(2, i), arange(1, szLPx)] = dot((- 1), A(dot(2, i) - 1, arange(1, szLPx)))
-        # unseen.m:80
-        A[dot(2, i) - 1, szLPx + dot(2, i) - 1] = - 1
-        # unseen.m:81
-        A[dot(2, i), szLPx + dot(2, i)] = - 1
-        # unseen.m:82
-        b[dot(2, i) - 1] = fLP(i)
-        # unseen.m:83
-        b[dot(2, i)] = - fLP(i)
-    # unseen.m:84
+    b = [[0.0 for i in range(1)] for j in range(dot(2, szLPf))]
+    # b = zeros(dot(2, szLPf), 1)
 
-    Aeq = zeros(1, szLPx + dot(2, szLPf))
+    # unseen.m:77
+    for i in range(szLPf):
+        t = dot(k, xLP)
+        t = np.array(t)[0]
+        t = poisson.pmf(i+1, t)
+        A[2 * i][:szLPx] = t[:]
+        A[2 * i + 1][:szLPx] = -t[:]
+        t = szLPx + 2*i
+        t = np.asarray(t)[0][0]
+        A[2*i][t] = - 1
+        t = szLPx + 2 * i + 1
+        t = np.asarray(t)[0][0]
+        A[2*i+1][t] = - 1
+        b[2*i][0] = fLP[i]
+        b[2*i+1][0] = -fLP[i]
+
+    # unseen.m:84
+    n = szLPx + dot(2, szLPf)
+    n = np.array(n)[0][0]
+    Aeq = [0 for _ in range(n)]
     # unseen.m:87
-    Aeq[arange(1, szLPx)] = xLP
+    t = xLP.copy()
+    t = np.asarray(t)[0]
+    Aeq[:szLPx] = t[:]
     # unseen.m:88
-    beq = copy(LPmass)
+    beq = LPmass
     # unseen.m:89
     options = {'maxiter': maxLPIters, 'disp': False}
     # unseen.m:92
-    for i in arange(1, szLPx).reshape(-1):
-        A[arange(), i] = A(arange(), i) / xLP(i)
+    print(len(A), len(A[0]), len(t))
+    for j in range(len(t)):
+        for x in range(len(A)):
+            A[x][j] = A[x][j] / t[j]
         # unseen.m:94
-        Aeq[i] = Aeq(i) / xLP(i)
+        Aeq[j] = Aeq[j] / t[j]
     # unseen.m:95
-
-    res = linprog(objf, A, b, Aeq, beq, zeros(szLPx + dot(2, szLPf), 1),
-                  dot(Inf, ones(szLPx + dot(2, szLPf), 1)), [], options, nargout=4)
+    n = szLPx + dot(2, szLPf)
+    n = np.array(n)[0][0]
+    lb =  0.0
+    ub =  float("Inf")
+    objf=np.array([objf]).T
+    A = np.array(A)
+    b = np.array(b)
+    print(objf.shape, A.shape, b.shape)
+    res = linprog(c=objf, A_ub=A, b_ub=b, A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds=(lb, ub), options=options)
     # unseen.m:97
-    if res['exitflag'] == 0:
-        'maximum number of iterations reached--try increasing maxLPIters'
-
-    if res['exitflag'] < 0:
-        'LP1 solution was not found, still solving LP2 anyway...'
-        return res['exitflag']
+    if not res['success']:
+        print(res['message'])
+        return res['message']
 
     # Solve the 2nd LP, which minimizes support size subject to incurring at most
     # alpha worse objective function value (of the objective function in the

@@ -8,7 +8,6 @@ from matplotlib.pyplot import hist
 
 @function
 def makeFinger(v=None,*args,**kwargs):
-    print("hello guys")
 
     varargin = makeFinger.varargin
     nargin = makeFinger.nargin
