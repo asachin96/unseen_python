@@ -1,150 +1,219 @@
+# Generated with SMOP  0.41
+from operator import not_
 
-import numpy as np
-import scipy
-import matcompat
+from numpy import Inf
 
-# if available import pylab (from matlibplot)
-try:
-    import matplotlib.pylab as plt
-except ImportError:
-    pass
+from smop.libsmop import *
+# unseen.m
+from scipy.stats import poisson
+from scipy.optimize import linprog
+import __builtin__
 
-def unseen(f):
 
-    # Local Variables: xLPmax, Aeq, sol, xLPmin, b2, objf, ind, sol2, maxLPIters, fLP, gridFactor, fval, A2, szLPx, min_i, xLP, A, fmax, exitflag, objf2, output, alpha, LPmass, szLPf, histx, b, f, i, exitflag2, k, fval2, x, beq, options, wind
-    # Function calls: poisspdf, sort, linprog, log, min, max, sum, sqrt, ceil, ones, zeros, unseen, optimset, not, Inf, find, size
-    #% Input: fingerprint f, where f(i) represents number of elements that
-    #% appear i times in a sample.  Thus sum_i i*f(i) = sample size.
-    #% File makeFinger.m transforms a sample into the associated fingerprint.  
-    #%
-    #% Output: approximation of 'histogram' of true distribution.  Specifically,
-    #% histx(i) represents the number of domain elements that occur with
-    #% probability x(i).   Thus sum_i x(i)*histx(i) = 1, as distributions have
-    #% total probability mass 1.   
-    #%
-    #% An approximation of the entropy of the true distribution can be computed
-    #% as:    Entropy = (-1)*sum(histx.*x.*log(x))
-    f = f.flatten(0).conj()
-    k = np.dot(f, np.arange(1., (matcompat.size(f, 2.))+1).conj().T)
-    #%total sample size
-    #%%%%%%% algorithm parameters %%%%%%%%%%%
+@function
+def unseen(f=None, *args, **kwargs):
+    varargin = unseen.varargin
+    nargin = unseen.nargin
+
+    # Input: fingerprint f, where f(i) represents number of elements that
+    # appear i times in a sample.  Thus sum_i i*f(i) = sample size.
+    # File makeFinger.m transforms a sample into the associated fingerprint.
+
+    # Output: approximation of 'histogram' of true distribution.  Specifically,
+    # histx(i) represents the number of domain elements that occur with
+    # probability x(i).   Thus sum_i x(i)*histx(i) = 1, as distributions have
+    # total probability mass 1.
+
+    # An approximation of the entropy of the true distribution can be computed
+    # as:    Entropy = (-1)*sum(histx.*x.*log(x))
+    f = np.asanyarray(f).reshape(-1,1).T
+    # unseen.m:14
+    #k = dot(f, (arange(1, size(f, 2))).T) #HARDCODED THIS SHIREEN
+    k=30000
+    # unseen.m:15
+
+    ####### algorithm parameters ###########
     gridFactor = 1.05
-    #% the grid of probabilities will be geometric, with this ratio.
-    #% setting this smaller may slightly increase accuracy, at the cost of speed 
-    alpha = .5
-    #%the allowable discrepancy between the returned solution and the "best" (overfit).
-    #% 0.5 worked well in all examples we tried, though the results were nearly indistinguishable 
-    #% for any alpha between 0.25 and 1.  Decreasing alpha increases the chances of overfitting. 
-    xLPmin = 1./np.dot(k, matcompat.max(10., k))
-    min_i = matcompat.max(nonzero((f > 0.)))
-    if min_i > 1.:
-        xLPmin = matdiv(min_i, k)
-    
-    
-    #% minimum allowable probability. 
-    #% a more aggressive bound like 1/k^1.5 would make the LP slightly faster,
-    #% though at the cost of accuracy
-    maxLPIters = 1000.
-    #% the 'MaxIter' parameter for Matlab's 'linprog' LP solver.
-    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    #% Split the fingerprint into the 'dense' portion for which we 
-    #% solve an LP to yield the corresponding histogram, and 'sparse' 
-    #% portion for which we simply use the empirical histogram
-    x = 0.
-    histx = 0.
-    fLP = np.zeros(1., matcompat.max(matcompat.size(f)))
-    for i in np.arange(1., (matcompat.max(matcompat.size(f)))+1):
-        if f[int(i)-1] > 0.:
-            wind = np.array(np.hstack((matcompat.max(1., (i-np.ceil(np.sqrt(i)))), matcompat.max((i+np.ceil(np.sqrt(i))), matcompat.max(matcompat.size(f))))))
-            if np.sum(f[int(wind[0])-1:wind[1]])<np.sqrt(i):
-                #% 2*sqrt(i)
-                x = np.array(np.hstack((x, matdiv(i, k))))
-                histx = np.array(np.hstack((histx, f[int(i)-1])))
-                fLP[int(i)-1] = 0.
+    # unseen.m:19
+
+    # setting this smaller may slightly increase accuracy, at the cost of speed
+    alpha = 0.5
+    # unseen.m:21
+
+    # 0.5 worked well in all examples we tried, though the results were nearly indistinguishable
+    # for any alpha between 0.25 and 1.  Decreasing alpha increases the chances of overfitting.
+    xLPmin = 1 / float(dot(k, __builtin__.max(10, k)))
+
+    # unseen.m:24
+    min_i = min(find(f > 0))
+    # unseen.m:25
+    if min_i > 1:
+        xLPmin = min_i / k
+    # unseen.m:27
+
+    # a more aggressive bound like 1/k^1.5 would make the LP slightly faster,
+    # though at the cost of accuracy
+    maxLPIters = 1000
+    # unseen.m:31
+
+    #######################################
+
+    # Split the fingerprint into the 'dense' portion for which we
+    # solve an LP to yield the corresponding histogram, and 'sparse'
+    # portion for which we simply use the empirical histogram
+    x = 0
+    # unseen.m:38
+    histx = 0
+    # unseen.m:39
+    fLP = zeros(1, max(size(f)))
+    # unseen.m:40
+    for i in np.arange(1, max(size(f))).reshape(-1):
+        if f[0][i] > 0:
+            wind = concat([max(1, i - ceil(sqrt(i))), __builtin__.min(i + ceil(sqrt(i)), max(size(f)))])
+            # unseen.m:43
+            sum = 0
+            for j in np.arange(wind[0], wind[1]):
+                sum = sum + f[0][int(j)]
+            if sum < sqrt(i):
+                x = concat([x, i / k])
+                # unseen.m:45
+                histx = concat([histx, f[0][i]])
+                # unseen.m:46
+                fLP[i] = 0
+            # unseen.m:47
             else:
-                fLP[int(i)-1] = f[int(i)-1]
-                
-            
-        
-        
-        
-    #% If no LP portion, return the empirical histogram
-    fmax = matcompat.max(nonzero((fLP > 0.)))
-    if matcompat.max(matcompat.size(fmax)) == 0.:
-        x = x[1:]
-        histx = histx[1:]
-        return []
-    
-    
-    #% Set up the first LP
-    LPmass = 1.-np.dot(x, histx.conj().T)
-    #%amount of probability mass in the LP region
-    fLP = np.array(np.hstack((fLP[0:fmax], np.zeros(1., np.ceil(np.sqrt(fmax))))))
-    szLPf = matcompat.max(matcompat.size(fLP))
-    xLPmax = matdiv(fmax, k)
-    xLP = np.dot(xLPmin, gridFactor**np.arange(0., (np.ceil(matdiv(np.log(matdiv(xLPmax, xLPmin)), np.log(gridFactor))))+1))
-    szLPx = matcompat.max(matcompat.size(xLP))
-    objf = np.zeros((szLPx+2.*szLPf), 1.)
-    objf[int(szLPx+1.)-1::2.] = matdiv(1., np.sqrt((fLP+1.)))
-    #% discrepancy in ith fingerprint expectation
-    objf[int(szLPx+2.)-1::2.] = matdiv(1., np.sqrt((fLP+1.)))
-    #% weighted by 1/sqrt(f(i) + 1)
-    A = np.zeros((2.*szLPf), (szLPx+2.*szLPf))
-    b = np.zeros((2.*szLPf), 1.)
-    for i in np.arange(1., (szLPf)+1):
-        A[int((2.*i-1.))-1,0:szLPx] = poisspdf(i, np.dot(k, xLP))
-        A[int((2.*i))-1,0:szLPx] = np.dot(-1., A[int((2.*i-1.))-1,0:szLPx])
-        A[int((2.*i-1.))-1,int((szLPx+2.*i-1.))-1] = -1.
-        A[int((2.*i))-1,int((szLPx+2.*i))-1] = -1.
-        b[int((2.*i-1.))-1] = fLP[int(i)-1]
-        b[int((2.*i))-1] = -fLP[int(i)-1]
-        
-    Aeq = np.zeros(1., (szLPx+2.*szLPf))
-    Aeq[0:szLPx] = xLP
-    beq = LPmass
-    options = optimset('MaxIter', maxLPIters, 'Display', 'off')
-    for i in np.arange(1., (szLPx)+1):
-        A[:,int(i)-1] = matdiv(A[:,int(i)-1], xLP[int(i)-1])
-        #%rescaling for better conditioning
-        Aeq[int(i)-1] = matdiv(Aeq[int(i)-1], xLP[int(i)-1])
-        
-    [sol, fval, exitflag, output] = linprog(objf, A, b, Aeq, beq, np.zeros((szLPx+2.*szLPf), 1.), np.dot(Inf, np.ones((szLPx+2.*szLPf), 1.)), np.array([]), options)
-    if exitflag == 0.:
+                fLP[i] = f[0][i]
+
+
+
+    fLP = f # BADA COMMENTs
+    # unseen.m:49
+
+    # If no LP portion, return the empirical histogram
+    fmax = max(find(fLP > 0))
+    # unseen.m:55
+    if min(size(fmax)) == 0:
+        x = x(np.arange(2, end()))
+        # unseen.m:57
+        histx = histx(np.arange(2, end()))
+        # unseen.m:58
+        return histx, x
+    # Set up the first LP
+    LPmass = 1 - dot(x, np.transpose(histx))
+    # unseen.m:63
+    print LPmass
+    print zeros(1,int(ceil(sqrt(fmax))))
+    fLP = np.append(fLP,(zeros(1,int(ceil(sqrt(fmax)))))) #to change
+    # fLP=concat(l)
+    # unseen.m:65
+    szLPf = max(size(fLP))
+    # unseen.m:66
+    #xLPmax = fmax / k
+    xLPmax = fmax / float(k)
+    # unseen.m:68
+
+
+    xLP = dot(xLPmin, gridFactor ** (arange(0, ceil(log(xLPmax / xLPmin) / log(gridFactor)))))
+    # unseen.m:69
+    szLPx = max(size(xLP))
+    # unseen.m:70
+    i = szLPx + dot(2, szLPf)
+    i = np.array(i)
+    objf = zeros(i[0][0] , 1)
+    # unseen.m:72
+
+    objf[arange(szLPx + 1, end(), 2)] = 1.0 / (sqrt(fLP + 1))
+    # unseen.m:73
+
+    objf[arange(szLPx + 2, end(), 2)] = 1.0 / (sqrt(fLP + 1))
+    # unseen.m:74
+
+    A = zeros(dot(2, szLPf), szLPx + dot(2, szLPf))
+    # unseen.m:76
+    b = zeros(dot(2, szLPf), 1)
+    # unseen.m:77
+    for i in arange(1, szLPf).reshape(-1):
+        A[dot(2, i) - 1, arange(1, szLPx)] = poisson.pmf(i, dot(k, xLP))
+        # unseen.m:79
+        A[dot(2, i), arange(1, szLPx)] = dot((- 1), A(dot(2, i) - 1, arange(1, szLPx)))
+        # unseen.m:80
+        A[dot(2, i) - 1, szLPx + dot(2, i) - 1] = - 1
+        # unseen.m:81
+        A[dot(2, i), szLPx + dot(2, i)] = - 1
+        # unseen.m:82
+        b[dot(2, i) - 1] = fLP(i)
+        # unseen.m:83
+        b[dot(2, i)] = - fLP(i)
+    # unseen.m:84
+
+    Aeq = zeros(1, szLPx + dot(2, szLPf))
+    # unseen.m:87
+    Aeq[arange(1, szLPx)] = xLP
+    # unseen.m:88
+    beq = copy(LPmass)
+    # unseen.m:89
+    options = {'maxiter': maxLPIters, 'disp': False}
+    # unseen.m:92
+    for i in arange(1, szLPx).reshape(-1):
+        A[arange(), i] = A(arange(), i) / xLP(i)
+        # unseen.m:94
+        Aeq[i] = Aeq(i) / xLP(i)
+    # unseen.m:95
+
+    res = linprog(objf, A, b, Aeq, beq, zeros(szLPx + dot(2, szLPf), 1),
+                  dot(Inf, ones(szLPx + dot(2, szLPf), 1)), [], options, nargout=4)
+    # unseen.m:97
+    if res['exitflag'] == 0:
         'maximum number of iterations reached--try increasing maxLPIters'
-    
-    
-    if exitflag<0.:
+
+    if res['exitflag'] < 0:
         'LP1 solution was not found, still solving LP2 anyway...'
-        exitflag
-    
-    
-    #% Solve the 2nd LP, which minimizes support size subject to incurring at most
-    #% alpha worse objective function value (of the objective function in the 
-    #% previous LP). 
-    objf2 = 0.*objf
-    objf2[0:szLPx] = 1.
-    A2 = np.array(np.vstack((np.hstack((A)), np.hstack((objf.conj().T)))))
-    #% ensure at most alpha worse obj value
-    b2 = np.array(np.vstack((np.hstack((b)), np.hstack((fval+alpha)))))
-    #% than solution of previous LP
-    for i in np.arange(1., (szLPx)+1):
-        objf2[int(i)-1] = matdiv(objf2[int(i)-1], xLP[int(i)-1])
-        #%rescaling for better conditioning
-        
-    [sol2, fval2, exitflag2, output] = linprog(objf2, A2, b2, Aeq, beq, np.zeros((szLPx+2.*szLPf), 1.), np.dot(Inf, np.ones((szLPx+2.*szLPf), 1.)), np.array([]), options)
-    if not_rename((exitflag2 == 1.)):
+        return res['exitflag']
+
+    # Solve the 2nd LP, which minimizes support size subject to incurring at most
+    # alpha worse objective function value (of the objective function in the
+    # previous LP).
+    objf2 = dot(0, objf)
+    # unseen.m:109
+    objf2[arange(1, szLPx)] = 1
+    # unseen.m:110
+    A2 = concat([[A], [objf.T]])
+    # unseen.m:111
+
+    b2 = concat([[b], [res['fun'] + alpha]])
+    # unseen.m:112
+
+    for i in arange(1, szLPx).reshape(-1):
+        objf2[i] = objf2(i) / xLP(i)
+    # unseen.m:114
+
+    # sol2,fval2,exitflag2,output=linprog(objf2,A2,b2,Aeq,beq,[ (zeros(szLPx + dot(2,szLPf),1)),(dot(float('Inf'),ones(szLPx + dot(2,szLPf),1))) ],options)
+    res = linprog(objf2, A2, b2, Aeq, beq, [(zeros(szLPx + dot(2, szLPf), 1)), (
+        dot(float('Inf'), ones(szLPx + dot(2, szLPf), 1)))], options)
+    exitflag2 = res['status']
+    fval2 = res['fun']
+    sol2 = res['x']
+
+    # unseen.m:116
+    if not_(exitflag2 == 1):
         'LP2 solution was not found'
         exitflag2
-    
-    
-    #%append LP solution to empirical portion of histogram
-    sol2[0:szLPx] = sol2[0:szLPx]/xLP.conj().T
-    #%removing the scaling
-    x = np.array(np.hstack((x, xLP)))
-    histx = np.array(np.hstack((histx, sol2.conj().T)))
-    [x, ind] = np.sort(x)
-    histx = histx[int(ind)-1]
-    ind = nonzero((histx > 0.))
-    x = x[int(ind)-1]
-    histx = histx[int(ind)-1]
-    return [histx, x]
+
+    # append LP solution to empirical portion of histogram
+    sol2[arange(1, szLPx)] = sol2(arange(1, szLPx)) / xLP.T
+    # unseen.m:125
+
+    x = concat([x, xLP])
+    # unseen.m:126
+    histx = concat([histx, sol2.T])
+    # unseen.m:127
+    x, ind = sort(x)
+    # unseen.m:128
+    histx = histx(ind)
+    # unseen.m:129
+    ind = find(histx > 0)
+    # unseen.m:130
+    x = x(ind)
+    # unseen.m:131
+    histx = histx(ind)
+# unseen.m:132
