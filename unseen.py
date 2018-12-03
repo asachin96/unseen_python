@@ -12,6 +12,7 @@ import __builtin__
 
 @function
 def unseen(f=None, *args, **kwargs):
+
     varargin = unseen.varargin
     nargin = unseen.nargin
 
@@ -94,9 +95,9 @@ def unseen(f=None, *args, **kwargs):
     fmax = max(find(fLP > 0))
     # unseen.m:55
     if min(size(fmax)) == 0:
-        x = x(np.arange(2, end()))
+        x = x(np.arange(1, end()))
         # unseen.m:57
-        histx = histx(np.arange(2, end()))
+        histx = histx(np.arange(1, end()))
         # unseen.m:58
         return histx, x
     # Set up the first LP
@@ -195,32 +196,42 @@ def unseen(f=None, *args, **kwargs):
     A = np.array(A)
     b = np.array(b)
     print(objf.shape, A.shape, b.shape)
-    res = linprog(c=objf, A_ub=A, b_ub=b, A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds=(lb, ub), options=options)
+    cobj = objf.flatten()
+
+    res = linprog(c=cobj, A_ub=A, b_ub=b, A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds=(lb, ub), options=options, method = 'interior-point')
+    res1 = res
+
     # unseen.m:97
     if not res['success']:
         print(res['message'])
-        return res['message']
+        #return res['message']
 
     # Solve the 2nd LP, which minimizes support size subject to incurring at most
     # alpha worse objective function value (of the objective function in the
     # previous LP).
     objf2 = dot(0, objf)
     # unseen.m:109
-    objf2[arange(1, szLPx)] = 1
+    objf2[range(0, szLPx)] = 1
     # unseen.m:110
-    A2 = concat([[A], [objf.T]])
+    #A2 = concat([[A], [objf.T]])
+    A2 = np.concatenate([A,objf.T])
+
     # unseen.m:111
 
-    b2 = concat([[b], [res['fun'] + alpha]])
+    #b2 = concat([[b], [res['fun'] + alpha]])
+    fval = res['fun']
+    b2= b.copy()
+    #b2.append(fval+alpha)
+    b2 = np.append(b2,fval+alpha)
+    #b2 = np.concatenate([b, fval + alpha])
     # unseen.m:112
 
-    for i in arange(1, szLPx).reshape(-1):
-        objf2[i] = objf2(i) / xLP(i)
+    for i in range(0, szLPx):
+        objf2[i] = objf2[i] / xLP[i]
     # unseen.m:114
 
     # sol2,fval2,exitflag2,output=linprog(objf2,A2,b2,Aeq,beq,[ (zeros(szLPx + dot(2,szLPf),1)),(dot(float('Inf'),ones(szLPx + dot(2,szLPf),1))) ],options)
-    res = linprog(objf2, A2, b2, Aeq, beq, [(zeros(szLPx + dot(2, szLPf), 1)), (
-        dot(float('Inf'), ones(szLPx + dot(2, szLPf), 1)))], options)
+    res = linprog(objf2, A2, b2,  A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds = (lb,ub), options = options, method = 'interior-point' )
     exitflag2 = res['status']
     fval2 = res['fun']
     sol2 = res['x']
@@ -229,17 +240,26 @@ def unseen(f=None, *args, **kwargs):
     if not_(exitflag2 == 1):
         'LP2 solution was not found'
         exitflag2
-
+    #EXIT FLAG TURNED NOT EQUAL TO BE 1 RECHECK
     # append LP solution to empirical portion of histogram
-    sol2[arange(1, szLPx)] = sol2(arange(1, szLPx)) / xLP.T
-    # unseen.m:125
+    #sol2[arange(1, szLPx)] = sol2[arange(1, szLPx)] / xLP.T
 
-    x = concat([x, xLP])
+    for i in range (0 , int(szLPx)):
+        sol2[i] = sol2[i] / xLP.T[i]
+    # unseen.m:125
+    #CHECK sol2 VALUE
+
+    #x = concat([x, xLP])
+    x = np.append (x , xLP)
     # unseen.m:126
-    histx = concat([histx, sol2.T])
+    #histx = concat([histx, sol2.T])
+    histx = np.append(histx, sol2.T)
     # unseen.m:127
-    x, ind = sort(x)
+    ind = np.argsort(x)
+
+    x = sort(x)
     # unseen.m:128
+    """
     histx = histx(ind)
     # unseen.m:129
     ind = find(histx > 0)
@@ -247,4 +267,6 @@ def unseen(f=None, *args, **kwargs):
     x = x(ind)
     # unseen.m:131
     histx = histx(ind)
+    """
+    return [histx,x]
 # unseen.m:132
