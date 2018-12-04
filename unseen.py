@@ -220,18 +220,22 @@ def unseen(f=None, *args, **kwargs):
 
     #b2 = concat([[b], [res['fun'] + alpha]])
     fval = res['fun']
-    b2= b.copy()
+    b2= np.array(b)
     #b2.append(fval+alpha)
-    b2 = np.append(b2,fval+alpha)
+
+    b2 = np.append(b2, fval+alpha).reshape(-1,1)
+    # b2 = np.transpose(b2, 0)
+    #b2.__add__(fval+alpha)
     #b2 = np.concatenate([b, fval + alpha])
     # unseen.m:112
-
     for i in range(0, szLPx):
-        objf2[i] = objf2[i] / xLP[i]
+        print(objf2[i],"objf2[i]")
+        print(t[i],"t[i]")
+        objf2[i] = objf2[i] / t[i] #t is XLP
     # unseen.m:114
 
     # sol2,fval2,exitflag2,output=linprog(objf2,A2,b2,Aeq,beq,[ (zeros(szLPx + dot(2,szLPf),1)),(dot(float('Inf'),ones(szLPx + dot(2,szLPf),1))) ],options)
-    res = linprog(objf2, A2, b2,  A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds = (lb,ub), options = options, method = 'interior-point' )
+   # res = linprog(objf2, A2, b2,  A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds = (None,ub), options = options, method = 'interior-point')
     exitflag2 = res['status']
     fval2 = res['fun']
     sol2 = res['x']
@@ -244,13 +248,15 @@ def unseen(f=None, *args, **kwargs):
     # append LP solution to empirical portion of histogram
     #sol2[arange(1, szLPx)] = sol2[arange(1, szLPx)] / xLP.T
 
+    tTranspose = t.T
     for i in range (0 , int(szLPx)):
-        sol2[i] = sol2[i] / xLP.T[i]
+        sol2[i] = sol2[i] / tTranspose[i]
     # unseen.m:125
     #CHECK sol2 VALUE
-
+    # res['x']
     #x = concat([x, xLP])
-    x = np.append (x , xLP)
+    x=0
+    x = np.append(x, t)
     # unseen.m:126
     #histx = concat([histx, sol2.T])
     histx = np.append(histx, sol2.T)
@@ -259,14 +265,26 @@ def unseen(f=None, *args, **kwargs):
 
     x = sort(x)
     # unseen.m:128
-    """
-    histx = histx(ind)
+
+    # histx = histx(ind)
+
+    histx = np.array(histx)[ind]
     # unseen.m:129
-    ind = find(histx > 0)
+    h = []
+    for val in histx:
+        if val != 0:
+            h.append(val)
+    h = np.array(h)
     # unseen.m:130
-    x = x(ind)
+    # x = np.array(x)[ind]
     # unseen.m:131
-    histx = histx(ind)
-    """
-    return [histx,x]
+    # histx = np.array(histx)[ind]
+
+    x = np.array(x)
+    y=[]
+    for val in x:
+        if val != 0:
+            y.append(val)
+    y = np.array(y)
+    return [h,y]
 # unseen.m:132
