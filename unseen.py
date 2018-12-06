@@ -67,24 +67,6 @@ def unseen(f=None, *args, **kwargs):
     histx = 0
     # unseen.m:39
     fLP = zeros(1, max(size(f)))
-    # unseen.m:40
-    #check back later
-    # for i in np.arange(1, max(size(f))).reshape(-1):
-    #     if f[0][i] > 0:
-    #         wind = concat([max(1, i - ceil(sqrt(i))), __builtin__.min(i + ceil(sqrt(i)), size(f))])
-    #         # unseen.m:43
-    #         sum = 0
-    #         for j in np.arange(wind[0], wind[1]):
-    #             sum = sum + f[0][int(j)]
-    #         if sum < sqrt(i):
-    #             x = concat([x, i / k])
-    #             # unseen.m:45
-    #             histx = concat([histx, f[0][i]])
-    #             # unseen.m:46
-    #             fLP[i] = 0
-    #         # unseen.m:47
-    #         else:
-    #             fLP[i] = f[0][i]
 
 
 
@@ -114,19 +96,12 @@ def unseen(f=None, *args, **kwargs):
 
 
     xLP = dot(xLPmin, gridFactor ** (arange(0, ceil(log(xLPmax / xLPmin) / log(gridFactor)))))
-    # print ("xLP: " + str(xLP))
-    # unseen.m:69
     szLPx = max(size(xLP))
-    print ("szLPx: " + str(szLPx))
 
-    # unseen.m:70
     i = szLPx + dot(2, szLPf)
     i = np.array(i)
-    # objf = zeros(i[0][0] , 1)
-    print ("objf length: " + str(i[0][0]))
 
     objf = [0 for _ in range(i[0][0])]
-    # unseen.m:72
 
     t = fLP.copy()
     for j in range(len(fLP)):
@@ -147,7 +122,6 @@ def unseen(f=None, *args, **kwargs):
     n = np.array(n)
     A = [[0.0 for i in range(n[0][0])] for j in range(m)]
     # A = zeros(m, n[0][0])
-    print "A.shape: " + str(len(A))+ ", "+ str(len(A[0]))
     # unseen.m:76
     b = [[0.0 for i in range(1)] for j in range(dot(2, szLPf))]
     # b = zeros(dot(2, szLPf), 1)
@@ -181,7 +155,6 @@ def unseen(f=None, *args, **kwargs):
     # unseen.m:89
     options = {'maxiter': maxLPIters, 'disp': False}
     # unseen.m:92
-    print(len(A), len(A[0]), len(t))
     for j in range(len(t)):
         for x in range(len(A)):
             A[x][j] = A[x][j] / t[j]
@@ -195,7 +168,6 @@ def unseen(f=None, *args, **kwargs):
     objf=np.array([objf]).T
     A = np.array(A)
     b = np.array(b)
-    print(objf.shape, A.shape, b.shape)
     cobj = objf.flatten()
 
     res = linprog(c=cobj, A_ub=A, b_ub=b, A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds=(lb, ub), options=options, method = 'interior-point')
@@ -206,9 +178,6 @@ def unseen(f=None, *args, **kwargs):
         print(res['message'])
         #return res['message']
 
-    # Solve the 2nd LP, which minimizes support size subject to incurring at most
-    # alpha worse objective function value (of the objective function in the
-    # previous LP).
     objf2 = dot(0, objf)
     # unseen.m:109
     objf2[range(0, szLPx)] = 1
@@ -229,8 +198,6 @@ def unseen(f=None, *args, **kwargs):
     #b2 = np.concatenate([b, fval + alpha])
     # unseen.m:112
     for i in range(0, szLPx):
-        print(objf2[i],"objf2[i]")
-        print(t[i],"t[i]")
         objf2[i] = objf2[i] / t[i] #t is XLP
     # unseen.m:114
 

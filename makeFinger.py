@@ -29,5 +29,4 @@ def makeFinger(v=None,*args,**kwargs):
 
     f=ravel(f)
 # makeFinger.m:10
-    print f
     return f

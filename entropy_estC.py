@@ -3,6 +3,7 @@ import numpy as np
 import scipy
 import matcompat
 from scipy.optimize import linprog
+from scipy.stats import poisson
 from smop.libsmop import *
 import __builtin__
 
@@ -97,6 +98,7 @@ def entropy_estC(f):
         x = x(np.arange(1, end()))
         # unseen.m:57
         histx = histx(np.arange(1, end()))
+        # ent = np.dot(-histx, (x * np.log(x)).conj().T) + matdiv(np.sum(histx), 2. * k)
         #Compute ent from .m
         # unseen.m:58
         return histx, x
@@ -115,19 +117,12 @@ def entropy_estC(f):
 
 
     xLP = dot(xLPmin, gridFactor ** (arange(0, ceil(log(xLPmax / xLPmin) / log(gridFactor)))))
-    # print ("xLP: " + str(xLP))
-    # unseen.m:69
     szLPx = max(size(xLP))
-    print ("szLPx: " + str(szLPx))
 
-    # unseen.m:70
     i = szLPx + dot(2, szLPf)
     i = np.array(i)
-    # objf = zeros(i[0][0] , 1)
-    print ("objf length: " + str(i[0][0]))
 
     objf = [0 for _ in range(i[0][0])]
-    # unseen.m:72
 
     t = fLP.copy()
     for j in range(len(fLP)):
@@ -136,22 +131,16 @@ def entropy_estC(f):
     for j in range(szLPx, len(objf), 2):
         objf[j] = t[m]
         m+=1
-    # unseen.m:73
     m = 0
     for j in range(szLPx + 1, len(objf), 2):
         objf[j] = t[m]
         m += 1
-    # unseen.m:74
 
     m = dot(2, szLPf)
     n = szLPx + dot(2, szLPf)
     n = np.array(n)
     A = [[0.0 for i in range(n[0][0])] for j in range(m)]
-    # A = zeros(m, n[0][0])
-    print "A.shape: " + str(len(A))+ ", "+ str(len(A[0]))
-    # unseen.m:76
     b = [[0.0 for i in range(1)] for j in range(dot(2, szLPf))]
-    # b = zeros(dot(2, szLPf), 1)
 
     # unseen.m:77
     for i in range(szLPf):
@@ -182,7 +171,6 @@ def entropy_estC(f):
     # unseen.m:89
     options = {'maxiter': maxLPIters, 'disp': False}
     # unseen.m:92
-    print(len(A), len(A[0]), len(t))
     for j in range(len(t)):
         for x in range(len(A)):
             A[x][j] = A[x][j] / t[j]
@@ -196,58 +184,23 @@ def entropy_estC(f):
     objf=np.array([objf]).T
     A = np.array(A)
     b = np.array(b)
-    print(objf.shape, A.shape, b.shape)
     cobj = objf.flatten()
+    x=0
 
     res = linprog(c=cobj, A_ub=A, b_ub=b, A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds=(lb, ub), options=options, method = 'interior-point')
-    res1 = res
+    sol2 = res['x']
 
-    # unseen.m:97
     if not res['success']:
         print(res['message'])
-        #return res['message']
-        
 
-    
-    
-    #% Solve the 2nd LP, which minimizes support size subject to incurring at most
-    #% alpha worse objective function value (of the objective function in the 
-    #% previous LP). 
-    if min_i<2.:
-        objf2 = 0.*objf
-        objf2[0:szLPx] = 1.
-        A2 = np.array(np.vstack((np.hstack((A)), np.hstack((objf.conj().T)))))
-        #% ensure at most alpha worse obj value
-        b2 = np.array(np.vstack((np.hstack((b)), np.hstack((fval+alpha)))))
-        #% than solution of previous LP
-        for i in np.arange(1., (szLPx)+1):
-            objf2[int(i)-1] = matdiv(objf2[int(i)-1], xLP[int(i)-1])
-            #%rescaling for better conditioning
-            
-        [sol2, fval2, exitflag2, output] = linprog(objf2, A2, b2, Aeq, beq, np.zeros((szLPx+2.*szLPf), 1.), np.dot(Inf, np.ones((szLPx+2.*szLPf), 1.)), np.array([]), options)
-        if not_rename((exitflag2 == 1.)):
-            'LP2 solution was not found'
-            exitflag2
-        
-        
-    else:
-        sol2 = sol
-        
-    
-    sol2[0:szLPx] = sol2[0:szLPx]/xLP.conj().T
+    for j in range(szLPx):
+        sol2[j] = sol2[j]/xLP[j]
     #%removing the scaling
     #%append LP solution to empirical portion of histogram
-    if matcompat.max(matcompat.size(nonzero((x > 0.)))) == 0.:
-        ent = np.dot(-sol2[0:szLPx].conj().T, (xLP*np.log(xLP)).conj().T)
-    else:
-        ent = np.dot(-histx[int(nonzero((x > 0.)))-1], (x[int(nonzero((x > 0.)))-1]*np.log(x[int(nonzero((x > 0.)))-1])).conj().T)+matdiv(np.sum(histx[int(nonzero((x > 0.)))-1]), 2.*k)-np.dot(sol2[0:szLPx].conj().T, (xLP*np.log(xLP)).conj().T)
-        
-    
-    x = np.array(np.hstack((x, xLP)))
-    histx = np.array(np.hstack((histx, sol2.conj().T)))
-    [x, ind] = np.sort(x)
-    histx = histx[int(ind)-1]
-    ind = nonzero((histx > 0.))
-    x = x[int(ind)-1]
-    histx = histx[int(ind)-1]
-    return [ent]
+    if max(matcompat.size(find((x > 0.)))) == 0.:
+        t = np.asarray(xLP)[0]
+        for j in range(len(t)):
+            t[j] = t[j]*log(t[j])
+        ent = np.dot(-sol2[0:szLPx].T, t.T)
+
+    return ent

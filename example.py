@@ -5,13 +5,13 @@ import random
 # if available import pylab (from matlibplot)
 from unseen import unseen
 from makeFinger import makeFinger
+from entropy_estC import entropy_estC
 
 # % Generate a sample of size 10,000 from the uniform distribution of support 100,000
 n = 100000
 k = 30000
 # samp = randi(n, k, 1.)
 samp = [random.uniform(0,n) for i in range(k)]
-print(samp)
 # % Compute corresponding 'fingerprint'
 f = makeFinger(samp)
 # % Estimate histogram of distribution from which sample was drawn
@@ -35,3 +35,5 @@ empiricalEntropy = np.dot(-f.T, arr)
 estimatedEntropy = np.matmul(-h,np.multiply(x, np.log(x)).T)
 # %output entropy using entropy_estC.m (should be almost the same as above):
 estimatedEntropy2 = entropy_estC(f)
+
+print(trueEntropy, empiricalEntropy, estimatedEntropy, estimatedEntropy2)
