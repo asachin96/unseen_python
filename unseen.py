@@ -4,6 +4,7 @@ from operator import not_
 from smop.libsmop import *
 from scipy.stats import poisson
 from scipy.optimize import linprog
+
 import numpy as np
 import __builtin__
 
@@ -107,13 +108,15 @@ def unseen(f=None, *args, **kwargs):
 
     objf2 = dot(0, objf)
     objf2[range(0, szLPx)] = 1
-
+    A2 = np.concatenate([A, objf.T])
     fval = res['fun']
     for i in range(0, szLPx):
         objf2[i] = objf2[i] / t[i] #t is XLP
-
+    alpha = 0.5
+    b2 = b.copy()
+    b2 = np.append(b2, fval + alpha)
+    res = linprog(objf2.flatten(), A_ub=A2, b_ub=b2, A_eq=np.array([Aeq]), b_eq=np.array([beq]), bounds=(lb, ub), options=options, method = 'simplex')
     exitflag2 = res['status']
-    fval2 = res['fun']
     sol2 = res['x']
 
     if exitflag2 == 1:
@@ -136,7 +139,7 @@ def unseen(f=None, *args, **kwargs):
         if val != 0:
             h.append(val)
     h = np.array(h)
-
+    h = histx[:-1]
 
     x = np.array(x)
     y=[]
